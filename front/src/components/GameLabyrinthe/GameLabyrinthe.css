@@ -115,6 +115,15 @@
   top: 8px;
 }
 
+.labyrinthe-corbeau {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  position: absolute;
+  left: 8px;
+  top: 8px;
+}
+
 .labyrinthe-message {
   position: absolute;
   z-index: 10;
@@ -133,4 +142,17 @@
 
 .labyrinthe-message button {
   margin-top: 1rem;
+}
+
+.labyrinthe-inventaire-count {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  background: #222;
+  color: #fff;
+  font-size: 0.9em;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-weight: bold;
+  pointer-events: none;
 }
