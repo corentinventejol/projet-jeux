@@ -124,6 +124,15 @@
   top: 8px;
 }
 
+.labyrinthe-epouventail {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  position: absolute;
+  left: 8px;
+  top: 8px;
+}
+
 .labyrinthe-message {
   position: absolute;
   z-index: 10;

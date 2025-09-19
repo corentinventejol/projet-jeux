@@ -63,6 +63,7 @@ const GameLabyrinthe = () => {
   const [mapState, setMapState] = useState(maps[mapIndex]);
   const [inventaire, setInventaire] = useState([]);
   const [message, setMessage] = useState("");
+  const [aRecupEpouvantails, setARecupEpouvantails] = useState(false);
   const gridRef = useRef();
 
   // Scroll automatique vers le joueur
@@ -79,7 +80,7 @@ const GameLabyrinthe = () => {
   }, [playerPos]);
 
   // Gestion des mouvements via GameControls
-  const isSolid = (val) => [1, 2, 3, 4, 5, 6, 8].includes(val);
+  const isSolid = (val) => [1, 2, 3, 4, 5, 6, 8, 9].includes(val);
   const handleMove = (direction) => {
     let { row, col } = playerPos;
     if (direction === "ArrowUp" && row > 0 && !isSolid(mapState[row - 1][col]))
@@ -112,21 +113,24 @@ const GameLabyrinthe = () => {
         // Si un message est affiché et concerne le fermier
         if (message && message.pnj === 6) {
           if (message.step === 0) {
-            // Compte le nombre d'épouvantails déjà dans l'inventaire
-            const hasEpouventail = inventaire.some(
-              (item) => item.name === "Epouvantail"
-            );
-            if (!hasEpouventail) {
+            if (!aRecupEpouvantails) {
               setInventaire((prev) => [
                 ...prev,
                 { id: Date.now(), name: "Epouvantail", img: epouventail, count: 2 },
               ]);
+              setARecupEpouvantails(true); // On bloque la récupération pour la suite
+              setMessage({
+                text: "Voici 2 épouvantails pour t'aider, je ne sais pas où les placer pour les faire tous fuir.",
+                step: 1,
+                pnj: 6,
+              });
+            } else {
+              setMessage({
+                text: "Je t'ai déjà donné tous mes épouvantails, bon courage !",
+                step: 1,
+                pnj: 6,
+              });
             }
-            setMessage({
-              text: "Voici 2 épouvantails pour t'aider, je ne sais pas ou les placer pour les faire tous fuir.",
-              step: 1,
-              pnj: 6,
-            });
           } else {
             setMessage(null);
           }
@@ -211,12 +215,72 @@ const GameLabyrinthe = () => {
           }, 500);
         }
       }
+      // AJOUT POUR LA TOUCHE E
+      if (e.key.toLowerCase() === "e") {
+        if (!aRecupEpouvantails) return; // <-- AJOUT : bloque la touche E tant que tu n'as pas parlé au fermier
+        poserEpouvantail();
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [playerPos, mapState, message, mapIndex]);
+  }, [playerPos, mapState, message, mapIndex, inventaire, aRecupEpouvantails]);
 
   const getImageByDirection = () => perso;
+
+  const poserEpouvantail = () => {
+    const index = inventaire.findIndex((item) => item.name === "Epouvantail" && item.count > 0);
+    if (index === -1) {
+      setMessage("Tu n'as plus d'épouvantail !");
+      return;
+    }
+
+    // Empêche de poser sur un champ (7)
+    if (mapState[playerPos.row][playerPos.col] === 7) {
+      setMessage("Tu ne peux pas poser d'épouvantail sur un champ !");
+      return;
+    }
+
+    // Copie la map
+    const newMap = mapState.map((row) => [...row]);
+    let corbeauxChasses = 0;
+
+    // Pose l'épouvantail à la position du joueur
+    newMap[playerPos.row][playerPos.col] = 9;
+
+    // Rayon de 3 cases autour du joueur
+    for (let dr = -3; dr <= 3; dr++) {
+      for (let dc = -3; dc <= 3; dc++) {
+        const r = playerPos.row + dr;
+        const c = playerPos.col + dc;
+        if (
+          r >= 0 &&
+          r < newMap.length &&
+          c >= 0 &&
+          c < newMap[0].length
+        ) {
+          if (newMap[r][c] === 8) {
+            newMap[r][c] = 0; // Remplace corbeau par sol
+            corbeauxChasses++;
+          }
+        }
+      }
+    }
+
+    setInventaire((prev) => {
+      return prev.map((item) =>
+        item.name === "Epouvantail"
+          ? { ...item, count: item.count - 1 }
+          : item
+      ).filter((item) => item.count > 0);
+    });
+
+    setMapState(newMap);
+    setMessage(
+      corbeauxChasses > 0
+        ? `Tu as chassé ${corbeauxChasses} corbeau(x) !`
+        : "Aucun corbeau dans la zone."
+    );
+  };
 
   return (
     <>
@@ -302,6 +366,13 @@ const GameLabyrinthe = () => {
                     className="labyrinthe-corbeau"
                   />
                 )}
+                {cell === 9 && (
+                  <img
+                    src={epouventail}
+                    alt="épouvantail"
+                    className="labyrinthe-epouventail"
+                  />
+                )}
                 {playerPos.row === rIdx && playerPos.col === cIdx && (
                   <>
                     {(() => {
@@ -333,6 +404,10 @@ const GameLabyrinthe = () => {
                         <div className="labyrinthe-action">A</div>
                       ) : null;
                     })()}
+                    {/* Indication pour E si épouvantail */}
+                    {inventaire.some((item) => item.name === "Epouvantail" && item.count > 0) && (
+                      <div className="labyrinthe-action" style={{ left: "40px" }}>E</div>
+                    )}
                     <img
                       src={getImageByDirection()}
                       alt="player"
@@ -352,10 +427,13 @@ const GameLabyrinthe = () => {
               inventaire.forEach((item) => {
                 if (!grouped[item.name]) {
                   grouped[item.name] = { ...item };
-                  // Pour l'épouvantail, on garde count: 2, sinon count++
                   grouped[item.name].count = item.name === "Epouvantail" ? item.count : 1;
-                } else if (item.name !== "Epouvantail") {
-                  grouped[item.name].count++;
+                } else {
+                  if (item.name === "Epouvantail") {
+                    grouped[item.name].count += item.count;
+                  } else {
+                    grouped[item.name].count++;
+                  }
                 }
               });
               return Object.values(grouped).map((item) => (
