@@ -120,7 +120,7 @@ const GameLabyrinthe = () => {
               ]);
               setARecupEpouvantails(true); // On bloque la récupération pour la suite
               setMessage({
-                text: "Voici 2 épouvantails pour t'aider, je ne sais pas où les placer pour les faire tous fuir.",
+                text: "Voici 2 épouvantails pour t'aider, je ne sais pas où les placer pour les faire tous fuir car ils sont actifs que dans un rayon de 3 cases.",
                 step: 1,
                 pnj: 6,
               });
